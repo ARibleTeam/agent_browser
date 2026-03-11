@@ -183,9 +183,19 @@ def _fmt_goal(msg: str):
 
 
 def _fmt_judge(msg: str):
-    if '⚖️' in msg or 'Judge Verdict' in msg:
-        return (msg.strip(), False)
-    return None
+    """
+    Логи с вердиктом судьи. Если есть явный PASS/FAIL — считаем это финалом задачи.
+
+    Возвращаем (text, is_final_result), где is_final_result=True означает,
+    что по этому сообщению можно завершать задачу на уровне UI.
+    """
+    if '⚖️' not in msg and 'Judge Verdict' not in msg:
+        return None
+
+    text = msg.strip()
+    # Считаем, что финальный вердикт всегда содержит PASS или FAIL
+    is_final = ('FAIL' in text) or ('PASS' in text)
+    return (text, is_final)
 
 
 def _fmt_final_result(msg: str):
@@ -319,6 +329,24 @@ class LogHandler(logging.Handler):
             if log_type == 'result' and is_final_result:
                 queue_data['success'] = True
                 queue_data['response'] = formatted_msg
+
+            # Всегда отправляем основное сообщение (step/goal/judge/…)
             self.log_queue.put(queue_data)
+
+            # Дополнительно: если это вердикт судьи и он финальный — шлём отдельное
+            # событие типа `result`, чтобы фронт гарантированно завершил задачу.
+            if log_type == 'judge' and is_final_result:
+                is_pass = ('PASS' in msg) and ('FAIL' not in msg)
+                result_payload = {
+                    'type': 'result',
+                    'success': is_pass,
+                }
+                if is_pass:
+                    # Условный успех — используем текст вердикта как итоговый ответ
+                    result_payload['response'] = formatted_msg
+                else:
+                    # FAIL — считаем это ошибкой/несоответствием требованиям
+                    result_payload['error'] = formatted_msg
+                self.log_queue.put(result_payload)
         except Exception:
             pass
