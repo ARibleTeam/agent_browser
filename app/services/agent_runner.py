@@ -214,7 +214,9 @@ def _fmt_final_result(msg: str):
     m = re.search(r'📄\s*Final Result:\s*(.+)', msg, re.DOTALL)
     if m:
         body = '\n'.join(l.strip() for l in m.group(1).strip().split('\n') if l.strip())
-        return (f"📄 Итог:\n{body}", False)
+        # Считаем, что наличие блока Final Result означает успешное завершение задачи.
+        # Помечаем это сообщение как финальное, чтобы UI мог остановить "крутилку".
+        return (f"📄 Итог:\n{body}", True)
     m = re.search(r'📄\s*(.+)', msg, re.DOTALL)
     if m:
         return (f"📄 {m.group(1).strip()}", False)
@@ -343,20 +345,29 @@ class LogHandler(logging.Handler):
             # Всегда отправляем основное сообщение (step/goal/judge/…)
             self.log_queue.put(queue_data)
 
-            # Дополнительно: если это вердикт судьи и он финальный — шлём отдельное
-            # событие типа `result`, чтобы фронт гарантированно завершил задачу.
-            if log_type == 'judge' and is_final_result:
-                is_pass = ('PASS' in msg) and ('FAIL' not in msg)
-                result_payload = {
-                    'type': 'result',
-                    'success': is_pass,
-                }
-                if is_pass:
-                    # Условный успех — используем текст вердикта как итоговый ответ
-                    result_payload['response'] = formatted_msg
+            # Дополнительно: если сообщение помечено как финальное (вердикт судьи PASS/FAIL
+            # или блок Final Result) — шлём отдельное событие типа `result`, чтобы фронт
+            # гарантированно завершил задачу.
+            if is_final_result:
+                if log_type == 'judge':
+                    is_pass = ('PASS' in msg) and ('FAIL' not in msg)
+                    result_payload = {
+                        'type': 'result',
+                        'success': is_pass,
+                    }
+                    if is_pass:
+                        # Условный успех — используем текст вердикта как итоговый ответ
+                        result_payload['response'] = formatted_msg
+                    else:
+                        # FAIL — считаем это ошибкой/несоответствием требованиям
+                        result_payload['error'] = formatted_msg
                 else:
-                    # FAIL — считаем это ошибкой/несоответствием требованиям
-                    result_payload['error'] = formatted_msg
+                    # Для Final Result трактуем это как успешное завершение задачи.
+                    result_payload = {
+                        'type': 'result',
+                        'success': True,
+                        'response': formatted_msg,
+                    }
                 self.log_queue.put(result_payload)
         except Exception:
             pass

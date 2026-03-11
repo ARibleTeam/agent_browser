@@ -11,7 +11,7 @@ let isAgentRunning = false;  // Флаг выполнения агента
 let currentReader = null;  // Текущий SSE reader для возможности отмены
 
 // Системный промпт: значение по умолчанию и текущее для выбранной модели
-let systemPromptDefault = 'Всегда используй поисковую систему Яндекс.';
+let systemPromptDefault = 'Открой страницу яндекс-поиска и после начинай выполнение задачи.';
 
 // Переключение layout: только чат (без боковых колонок)
 function enterTaskLayout() {
