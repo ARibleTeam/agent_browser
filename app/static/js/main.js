@@ -9,18 +9,13 @@ let isConfigured = false;
 let isVerified = false;  // Флаг проверки модели
 let isAgentRunning = false;  // Флаг выполнения агента
 let currentReader = null;  // Текущий SSE reader для возможности отмены
-let browserScreenshotReader = null;  // Reader для потока скриншотов браузера
-let browserCdpEndpoint = null;  // CDP endpoint браузера
 
-// Переключение layout: только чат + браузер (без боковых колонок)
+// Переключение layout: только чат (без боковых колонок)
 function enterTaskLayout() {
     document.querySelector('.container')?.classList.add('layout-task-running');
-    document.querySelector('.main-content')?.classList.add('layout-browser-visible');
 }
 function exitTaskLayout() {
     document.querySelector('.container')?.classList.remove('layout-task-running');
-    document.querySelector('.main-content')?.classList.remove('layout-browser-visible');
-    stopBrowserScreenshotStream();
 }
 
 // Инициализация при загрузке страницы
@@ -541,12 +536,6 @@ async function sendMessage() {
                         const data = JSON.parse(line.slice(6));
                         if (!data || typeof data !== 'object') continue;
 
-                        // Обработка информации о браузере
-                        if (data.type === 'browser_info') {
-                            browserCdpEndpoint = data.cdp_endpoint;
-                            startBrowserScreenshotStream();
-                        }
-                        
                         if (data.type === 'result' && data.success !== undefined) {
                             // Финальный результат — возврат к обычному виду
                             isAgentRunning = false;
@@ -688,67 +677,4 @@ function removeMessage(messageId) {
     }
 }
 
-// Запуск потока скриншотов браузера
-function startBrowserScreenshotStream() {
-    // Остановить предыдущий поток, если есть
-    stopBrowserScreenshotStream();
-    
-    const browserPlaceholder = document.getElementById('browserPlaceholder');
-    const browserScreenshot = document.getElementById('browserScreenshot');
-    
-    if (browserPlaceholder) {
-        browserPlaceholder.style.display = 'none';
-    }
-    if (browserScreenshot) {
-        browserScreenshot.style.display = 'block';
-    }
-    
-    // Подключиться к потоку скриншотов
-    const eventSource = new EventSource('/api/browser/screenshot/stream');
-    browserScreenshotReader = eventSource;
-    
-    eventSource.onmessage = function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'screenshot' && data.data) {
-                // Обновить изображение скриншота
-                if (browserScreenshot) {
-                    browserScreenshot.src = 'data:image/png;base64,' + data.data;
-                }
-            }
-        } catch (e) {
-            console.error('Ошибка обработки скриншота:', e);
-        }
-    };
-    
-    eventSource.onerror = function(error) {
-        console.error('Ошибка потока скриншотов:', error);
-        // Попробовать переподключиться через некоторое время
-        setTimeout(() => {
-            if (browserCdpEndpoint) {
-                startBrowserScreenshotStream();
-            }
-        }, 2000);
-    };
-}
-
-// Остановка потока скриншотов браузера
-function stopBrowserScreenshotStream() {
-    if (browserScreenshotReader) {
-        browserScreenshotReader.close();
-        browserScreenshotReader = null;
-    }
-    
-    const browserPlaceholder = document.getElementById('browserPlaceholder');
-    const browserScreenshot = document.getElementById('browserScreenshot');
-    
-    if (browserPlaceholder) {
-        browserPlaceholder.style.display = 'block';
-    }
-    if (browserScreenshot) {
-        browserScreenshot.style.display = 'none';
-        browserScreenshot.src = '';
-    }
-    
-    browserCdpEndpoint = null;
-}
+// Функции для потока скриншотов и CDP удалены, так как браузерный просмотр больше не используется.

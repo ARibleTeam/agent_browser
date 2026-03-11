@@ -3,15 +3,12 @@ import asyncio
 import logging
 import multiprocessing
 import re
-from urllib.parse import urlparse
 
 import app.state as state
-from app.services.browser_cdp import close_browser_via_cdp
 
 
 def stop_current_agent_process() -> None:
     """Гарантированно остановить текущий процесс агента."""
-    close_browser_via_cdp()
     if state.current_agent_process and state.current_agent_process.is_alive():
         try:
             state.current_agent_process.terminate()
@@ -76,14 +73,6 @@ def run_agent_process(log_queue, model_name, config, task):
                 # Таймаут 60 секунд для запуска браузера в Docker
                 await asyncio.wait_for(browser.start(), timeout=60.0)
                 browser_just_created = True
-                cdp_ws_url = browser.cdp_url
-                if cdp_ws_url:
-                    parsed = urlparse(cdp_ws_url)
-                    cdp_base_url = f'http://{parsed.hostname}:{parsed.port}'
-                    log_queue.put({
-                        'type': 'browser_info',
-                        'cdp_endpoint': cdp_base_url
-                    })
             except Exception as browser_error:
                 error_msg = format_error_message(browser_error)
                 log_queue.put({
