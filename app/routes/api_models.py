@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 from app.utils.models import (
     MODEL_CLASSES,
     REQUIRED_PARAMS,
+    DEFAULT_SYSTEM_PROMPT,
     create_model_instance,
     get_model_config,
     get_model_params_schema,
@@ -51,11 +52,18 @@ def get_config(model_name: str):
         config = get_model_config(model_name)
         config_dict = config or {}
         is_verified = config_dict.get('_verified', False)
+
+        # Системный промпт храним как служебное поле, но показываем в форме как обычный параметр
+        system_prompt_value = config_dict.get('_system_prompt', DEFAULT_SYSTEM_PROMPT)
+
         config_for_form = {k: v for k, v in config_dict.items() if not k.startswith('_')}
+        config_for_form['system_prompt'] = system_prompt_value
+
         return jsonify({
             'success': True,
             'config': config_for_form,
-            'verified': is_verified
+            'verified': is_verified,
+            'system_prompt_default': DEFAULT_SYSTEM_PROMPT,
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -67,6 +75,15 @@ def save_config(model_name: str):
         config = request.get_json()
         if not config:
             return jsonify({'success': False, 'error': 'Конфигурация не предоставлена'}), 400
+
+        # Вынести системный промпт в служебное поле, чтобы не передавать его в конструктор модели
+        system_prompt = config.pop('system_prompt', None)
+        if system_prompt is not None and system_prompt != '':
+            config['_system_prompt'] = system_prompt
+        else:
+            # Если поле пустое — используем дефолтный промпт
+            config['_system_prompt'] = DEFAULT_SYSTEM_PROMPT
+
         save_model_config(model_name, config)
         return jsonify({'success': True})
     except Exception as e:
@@ -80,6 +97,15 @@ def test_model(model_name: str):
         if not config:
             logger.warning("[test %s] Конфигурация не предоставлена", model_name)
             return jsonify({'success': False, 'error': 'Конфигурация не предоставлена'}), 400
+
+        # Обработка системного промпта: не передавать его в конструктор модели
+        system_prompt = config.pop('system_prompt', None)
+        if system_prompt is not None and system_prompt != '':
+            config['_system_prompt'] = system_prompt
+        else:
+            # Если поле пустое — используем дефолтный промпт
+            config['_system_prompt'] = DEFAULT_SYSTEM_PROMPT
+
         model_instance = create_model_instance(model_name, config)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

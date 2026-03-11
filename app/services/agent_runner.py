@@ -48,9 +48,19 @@ def run_agent_process(log_queue, model_name, config, task):
 
     async def run_agent():
         from browser_use import Agent, Browser, BrowserProfile
-        from app.utils.models import create_model_instance, format_error_message
+        from app.utils.models import (
+            DEFAULT_SYSTEM_PROMPT,
+            create_model_instance,
+            format_error_message,
+        )
 
         model_instance = create_model_instance(model_name, config)
+
+        # Подготовить задачу с учётом системного промпта:
+        # _system_prompt хранится в конфиге и не передаётся в модель,
+        # но всегда добавляется к пользовательской задаче агента.
+        system_prompt = config.get('_system_prompt', DEFAULT_SYSTEM_PROMPT) or DEFAULT_SYSTEM_PROMPT
+        full_task = f"{system_prompt.strip()}\n\n{task}".strip()
         browser = None
         browser_just_created = False
 
@@ -82,7 +92,7 @@ def run_agent_process(log_queue, model_name, config, task):
                 })
                 return None
 
-            agent = Agent(task=task, llm=model_instance, browser=browser)
+            agent = Agent(task=full_task, llm=model_instance, browser=browser)
             try:
                 history = await agent.run()
                 return history

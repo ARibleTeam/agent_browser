@@ -10,6 +10,9 @@ let isVerified = false;  // Флаг проверки модели
 let isAgentRunning = false;  // Флаг выполнения агента
 let currentReader = null;  // Текущий SSE reader для возможности отмены
 
+// Системный промпт: значение по умолчанию и текущее для выбранной модели
+let systemPromptDefault = 'Всегда используй поисковую систему Яндекс.';
+
 // Переключение layout: только чат (без боковых колонок)
 function enterTaskLayout() {
     document.querySelector('.container')?.classList.add('layout-task-running');
@@ -174,6 +177,10 @@ async function loadModelConfig(modelName) {
             if (data.success) {
                 currentConfig = data.config || {};
                 isVerified = data.verified || false;  // Получить флаг проверки
+                // Обновить дефолтный системный промпт, если сервер его вернул
+                if (data.system_prompt_default) {
+                    systemPromptDefault = data.system_prompt_default;
+                }
                 // Если модель проверена, считаем её настроенной
                 if (isVerified) {
                     isConfigured = true;
@@ -241,6 +248,16 @@ function generateSettingsForm(modelName) {
     html += '<div class="settings-card">';
     html += `<div class="settings-title">${modelName}</div>`;
     html += '<div class="settings-form">';
+
+    const currentSystemPrompt = currentConfig['system_prompt'] || systemPromptDefault || '';
+    html += '<div class="form-group">';
+    html += '<label>system_prompt</label>';
+    html += '<small class="param-description">Системный промпт агента. Он всегда добавляется к задаче перед запуском. Можно изменить или сбросить к значению по умолчанию.</small>';
+    html += `<textarea id="param_system_prompt" rows="3" placeholder="${systemPromptDefault}" oninput="onConfigChanged()">${currentSystemPrompt}</textarea>`;
+    html += '<div class="button-group">';
+    html += '<button type="button" class="btn btn-secondary" onclick="resetSystemPrompt()">Сбросить системный промпт</button>';
+    html += '</div>';
+    html += '</div>';
     
     params.forEach(({ name: paramName, info: paramInfo }) => {
         const isRequired = requiredParams.includes(paramName);
@@ -272,7 +289,7 @@ function generateSettingsForm(modelName) {
         
         html += '</div>';
     });
-    
+
     html += '<button class="btn-action" onclick="saveAndTestConfig()">Сохранить и проверить</button>';
     html += '<div id="statusMessage"></div>';
     html += '</div>';
@@ -315,7 +332,16 @@ async function saveAndTestConfig() {
             }
         }
     }
-    
+
+    // Системный промпт сохраняем отдельно: пустое значение означает "использовать дефолт"
+    const systemPromptEl = document.getElementById('param_system_prompt');
+    if (systemPromptEl) {
+        const value = systemPromptEl.value.trim();
+        if (value !== '') {
+            config['system_prompt'] = value;
+        }
+    }
+
     // Валидация обязательных полей
     const missing = requiredParams.filter(param => !config[param] || config[param] === '');
     if (missing.length > 0) {
@@ -371,6 +397,14 @@ window.onConfigChanged = function() {
     isVerified = false;
     isConfigured = false;
     checkConfiguration();
+};
+
+// Сброс системного промпта к значению по умолчанию
+window.resetSystemPrompt = function() {
+    const el = document.getElementById('param_system_prompt');
+    if (!el) return;
+    el.value = systemPromptDefault || '';
+    window.onConfigChanged();
 };
 
 // Проверка конфигурации и обновление интерфейса

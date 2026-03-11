@@ -32,6 +32,9 @@ from browser_use.llm.messages import UserMessage
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_FILE = PROJECT_ROOT / 'config' / 'models_config.json'
 
+# Системный промпт по умолчанию: всегда использовать Яндекс
+DEFAULT_SYSTEM_PROMPT = "Всегда используй поисковую систему Яндекс."
+
 MODEL_CLASSES: Dict[str, Type[BaseChatModel]] = {
     'ChatOpenAI': ChatOpenAI,
     'ChatGoogle': ChatGoogle,
