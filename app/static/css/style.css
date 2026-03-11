@@ -620,6 +620,13 @@ body {
     margin-bottom: 0;
 }
 
+.form-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
 .form-group label {
     font-size: 12px;
     font-weight: 600;
@@ -710,6 +717,33 @@ body {
     display: flex;
     gap: 10px;
     margin-top: 10px;
+}
+
+/* Кнопка сброса системного промпта внутри карточки настроек */
+.settings-card .form-group-header .btn-secondary {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.settings-card.light .form-group-header .btn-secondary {
+    color: var(--text-muted);
+    border-color: var(--border-color);
+    background: #f8f9fb;
+}
+
+.settings-card .form-group-header .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.settings-card.light .form-group-header .btn-secondary:hover {
+    background: #f0f0f2;
 }
 
 .btn {

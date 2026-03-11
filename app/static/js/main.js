@@ -251,12 +251,12 @@ function generateSettingsForm(modelName) {
 
     const currentSystemPrompt = currentConfig['system_prompt'] || systemPromptDefault || '';
     html += '<div class="form-group">';
+    html += '<div class="form-group-header">';
     html += '<label>system_prompt</label>';
+    html += '<button type="button" class="btn btn-secondary" onclick="resetSystemPrompt()">Сбросить</button>';
+    html += '</div>';
     html += '<small class="param-description">Системный промпт агента. Он всегда добавляется к задаче перед запуском. Можно изменить или сбросить к значению по умолчанию.</small>';
     html += `<textarea id="param_system_prompt" rows="3" placeholder="${systemPromptDefault}" oninput="onConfigChanged()">${currentSystemPrompt}</textarea>`;
-    html += '<div class="button-group">';
-    html += '<button type="button" class="btn btn-secondary" onclick="resetSystemPrompt()">Сбросить системный промпт</button>';
-    html += '</div>';
     html += '</div>';
     
     params.forEach(({ name: paramName, info: paramInfo }) => {
